@@ -77,22 +77,23 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on BIC scores
+        best_score = float('inf')
         best_model = None
-        best_score = float('-inf')
 
         try:
             for num_of_components in range(self.min_n_components, self.max_n_components+1):
                 # Create GaussianHMM model
                 model = self.base_model(num_of_components)
-                num_of_parameters = num_of_components*num_of_components + 2*num_of_components*len(self.lengths[0]) - 1
+                # Calculate number of free parameters
+                num_of_parameters = num_of_components*num_of_components + 2*num_of_components*self.lengths[0] - 1
 
                 # Calculate the BIC score
                 score = -2 * model.score(self.X, self.lengths) + num_of_parameters * math.log(self.lengths[0])
 
-                if score > best_score:
+                # Minimize the BIC score
+                if score <= best_score:
                     best_score = score
                     best_model = model
-
         except:
             pass
 
