@@ -6,7 +6,7 @@ import numpy as np
 from hmmlearn.hmm import GaussianHMM
 from sklearn.model_selection import KFold
 from asl_utils import combine_sequences
-
+from sklearn.model_selection import KFold
 
 class ModelSelector(object):
     '''
@@ -76,7 +76,7 @@ class SelectorBIC(ModelSelector):
         """
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection based on BIC scores
+        # Implement model selection based on BIC scores
         best_score = float('inf')
         best_model = None
 
@@ -123,5 +123,36 @@ class SelectorCV(ModelSelector):
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection using CV
-        raise NotImplementedError
+        best_score = float('-inf')
+        best_model = None
+        split_method = KFold(n_splits=min(3,len(self.sequences)))
+
+        for num_of_components in range(self.min_n_components, self.max_n_components):
+            try:
+                # folds and sum_of_logL used to find avg score over all splits
+                folds = 0
+                sum_of_logL = 0
+
+                # Create models on all of the splits for this num_of_components
+                for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                    folds += 1
+                    # Split data and create new X,lengths tuples for hmmlearn
+                    train_X,train_lengths = combine_sequences(cv_train_idx, self.sequences)
+                    test_X,test_lengths = combine_sequences(cv_test_idx, self.sequences)
+
+                    # Create/train model on train_X,train_lengths and score on test_X,test_lengths
+                    model = GaussianHMM(n_components=num_of_components, covariance_type="diag", n_iter=1000,
+                                            random_state=self.random_state, verbose=False).fit(train_X, train_lengths)
+                    sum_of_logL += model.score(test_X,test_lengths)
+
+                # Find avg score over all splits for this model
+                avg_score = sum_of_logL/folds
+
+                # Maximize the score
+                if avg_score >= best_score:
+                    best_score = avg_score
+                    best_model = model
+            except:
+                pass
+
+        return best_model
