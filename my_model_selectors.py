@@ -152,9 +152,9 @@ class SelectorCV(ModelSelector):
 
         best_score = float('-inf')
         best_model = None
-        split_method = KFold(n_splits=min(3,len(self.sequences)))
+        split_method = KFold(n_splits=min(len(self.sequences),3))
 
-        for num_of_components in range(self.min_n_components, self.max_n_components):
+        for num_of_components in range(self.min_n_components, self.max_n_components+1):
             try:
                 # folds and sum_of_logL used to find avg score over all splits
                 folds = 0
