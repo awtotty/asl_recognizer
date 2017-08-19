@@ -30,7 +30,7 @@ def recognize(models: dict, test_set: SinglesData):
                 try:
                     prob_dict[known_word] = model.score(test_X,test_lengths)
                 except:
-                    pass
+                    prob_dict[known_word] = float('-inf')
             # Add this dictionary to probabilities
             probabilities.append(prob_dict)
             # Add the known_word with highest prob to guesses.
