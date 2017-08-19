@@ -80,8 +80,8 @@ class SelectorBIC(ModelSelector):
         best_score = float('inf')
         best_model = None
 
-        try:
-            for num_of_components in range(self.min_n_components, self.max_n_components+1):
+        for num_of_components in range(self.min_n_components, self.max_n_components+1):
+            try:
                 # Create GaussianHMM model
                 model = self.base_model(num_of_components)
                 # Calculate number of free parameters
@@ -94,8 +94,8 @@ class SelectorBIC(ModelSelector):
                 if score <= best_score:
                     best_score = score
                     best_model = model
-        except:
-            pass
+            except:
+                pass
 
         return best_model
 
@@ -115,8 +115,8 @@ class SelectorDIC(ModelSelector):
         best_score = float('-inf')
         best_model = None
 
-        try:
-            for num_of_components in range(self.min_n_components, self.max_n_components+1):
+        for num_of_components in range(self.min_n_components, self.max_n_components+1):
+            try:
                 # Create GaussianHMM model
                 model = self.base_model(num_of_components)
 
@@ -125,9 +125,12 @@ class SelectorDIC(ModelSelector):
                 num_of_other_words = 0
                 for word in self.words:
                     if word is not self.this_word:
-                        num_of_other_words += 1
                         X_other,lengths_other = self.hwords[word]
-                        sum_other_probs += model.score(X_other,lengths_other)
+                        try:
+                            sum_other_probs += model.score(X_other,lengths_other)
+                            num_of_other_words += 1
+                        except:
+                            pass
 
                 # Calculate the DIC score
                 score = model.score(self.X, self.lengths) - 1/num_of_other_words * sum_other_probs
@@ -136,8 +139,9 @@ class SelectorDIC(ModelSelector):
                 if score >= best_score:
                     best_score = score
                     best_model = model
-        except:
-            pass
+            except:
+                pass
+
 
         return best_model
 
@@ -152,34 +156,36 @@ class SelectorCV(ModelSelector):
 
         best_score = float('-inf')
         best_model = None
-        split_method = KFold(n_splits=min(len(self.sequences),3))
+        split_method = KFold(n_splits=2)
 
-        for num_of_components in range(self.min_n_components, self.max_n_components+1):
-            try:
+        # If there are enough sequences to split:
+        if len(self.sequences) > 1:
+            for num_of_components in range(self.min_n_components, self.max_n_components+1):
                 # folds and sum_of_logL used to find avg score over all splits
                 folds = 0
                 sum_of_logL = 0
 
                 # Create models on all of the splits for this num_of_components
                 for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
-                    folds += 1
                     # Split data and create new X,lengths tuples for hmmlearn
                     train_X,train_lengths = combine_sequences(cv_train_idx, self.sequences)
                     test_X,test_lengths = combine_sequences(cv_test_idx, self.sequences)
 
                     # Create/train model on train_X,train_lengths and score on test_X,test_lengths
-                    model = GaussianHMM(n_components=num_of_components, covariance_type="diag", n_iter=1000,
-                                            random_state=self.random_state, verbose=False).fit(train_X, train_lengths)
-                    sum_of_logL += model.score(test_X,test_lengths)
+                    try:
+                        model = GaussianHMM(n_components=num_of_components, covariance_type="diag", n_iter=1000,
+                        random_state=self.random_state, verbose=False).fit(train_X, train_lengths)
+                        sum_of_logL += model.score(test_X,test_lengths)
+                        folds += 1
+                    except:
+                        pass
 
                 # Find avg score over all splits for this model
-                avg_score = sum_of_logL/folds
+                avg_score = sum_of_logL/folds if folds is not 0 else float('-inf')
 
                 # Maximize the score
                 if avg_score >= best_score:
                     best_score = avg_score
                     best_model = model
-            except:
-                pass
 
         return best_model
